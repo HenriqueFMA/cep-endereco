@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consulta de CEP</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #f0f2f5;
+            color: #1a1a2e;
+            min-height: 100vh;
+        }
+
+        header {
+            background: linear-gradient(135deg, #a100ff 0%, #7b00cc 100%);
+            color: #fff;
+            padding: 28px 40px;
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            box-shadow: 0 4px 20px rgba(161,0,255,.35);
+        }
+        header svg { flex-shrink: 0; }
+        header h1  { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.3px; }
+        header p   { font-size: 0.85rem; opacity: .85; margin-top: 2px; }
+
+        main {
+            max-width: 1100px;
+            margin: 36px auto;
+            padding: 0 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 2px 16px rgba(0,0,0,.08);
+            padding: 32px;
+        }
+        .card-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #7b00cc;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            margin-bottom: 22px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .search-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .search-row input {
+            flex: 1;
+            min-width: 200px;
+            padding: 14px 18px;
+            border: 2px solid #e2e2ef;
+            border-radius: 10px;
+            font-size: 1.05rem;
+            outline: none;
+            transition: border-color .2s;
+            letter-spacing: 2px;
+        }
+        .search-row input:focus { border-color: #a100ff; }
+        .search-row input::placeholder { letter-spacing: 0; color: #aaa; }
+        .btn {
+            padding: 14px 32px;
+            background: linear-gradient(135deg, #a100ff 0%, #7b00cc 100%);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity .2s, transform .1s;
+            white-space: nowrap;
+        }
+        .btn:hover   { opacity: .9; transform: translateY(-1px); }
+        .btn:active  { transform: translateY(0); }
+
+        .alert {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 18px;
+            border-radius: 10px;
+            font-size: .95rem;
+            font-weight: 500;
+        }
+        .alert-error {
+            background: #fff0f3;
+            color: #c00030;
+            border: 1.5px solid #ffc0cb;
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+        }
+        .result-field {
+            background: #f7f3ff;
+            border-radius: 10px;
+            padding: 14px 16px;
+        }
+        .result-field label {
+            font-size: .72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            color: #9b59b6;
+            display: block;
+            margin-bottom: 4px;
+        }
+        .result-field span {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #1a1a2e;
+        }
+        .result-field span.empty { color: #bbb; font-weight: 400; font-style: italic; }
+
+        .table-wrapper { overflow-x: auto; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: .9rem;
+        }
+        thead tr {
+            background: linear-gradient(135deg, #a100ff 0%, #7b00cc 100%);
+            color: #fff;
+        }
+        thead th {
+            padding: 12px 14px;
+            text-align: left;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        tbody tr { transition: background .15s; }
+        tbody tr:nth-child(even) { background: #f7f3ff; }
+        tbody tr:hover { background: #ede7ff; }
+        tbody td {
+            padding: 11px 14px;
+            border-bottom: 1px solid #eee;
+            white-space: nowrap;
+        }
+        .badge-uf {
+            background: #a100ff;
+            color: #fff;
+            border-radius: 6px;
+            padding: 2px 8px;
+            font-size: .8rem;
+            font-weight: 700;
+        }
+        .empty-table {
+            text-align: center;
+            color: #aaa;
+            padding: 40px;
+            font-size: .95rem;
+        }
+
+        .links-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .link-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-size: .87rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: opacity .2s;
+        }
+        .link-btn:hover { opacity: .82; }
+        .link-btn-swagger { background: #e8f5e9; color: #2e7d32; }
+        .link-btn-h2      { background: #e3f2fd; color: #1565c0; }
+
+        @media (max-width: 600px) {
+            header { padding: 20px; }
+            .card  { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <svg width="42" height="42" viewBox="0 0 42 42" fill="none">
+        <rect width="42" height="42" rx="12" fill="rgba(255,255,255,.15)"/>
+        <path d="M21 8C15.477 8 11 12.477 11 18c0 7.5 10 16 10 16s10-8.5 10-16c0-5.523-4.477-10-10-10z"
+              fill="#fff" opacity=".9"/>
+        <circle cx="21" cy="18" r="3.5" fill="#a100ff"/>
+    </svg>
+    <div>
+        <h1>Consulta de CEP</h1>
+        <p>Spring Boot · OpenFeign · ViaCEP · H2 Database</p>
+    </div>
+</header>
+
+<main>
+
+    <div class="links-row">
+        <a href="/swagger-ui/index.html" target="_blank" class="link-btn link-btn-swagger">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            Swagger UI
+        </a>
+        <a href="/h2-console" target="_blank" class="link-btn link-btn-h2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+                <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+            </svg>
+            Console H2
+        </a>
+        <a href="/cep/historico" target="_blank" class="link-btn link-btn-h2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            </svg>
+            API JSON
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            Buscar CEP
+        </div>
+
+        <form method="post" action="/buscar">
+            <div class="search-row">
+                <input
+                    type="text"
+                    name="cep"
+                    placeholder="Ex: 01001-000 ou 01001000"
+                    maxlength="9"
+                    required
+                    autocomplete="off"
+                    th:value="${cepDigitado}"
+                    id="cepInput"
+                />
+                <button type="submit" class="btn">Consultar</button>
+            </div>
+        </form>
+
+        <div th:if="${erro}" class="alert alert-error" style="margin-top:18px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <span th:text="${erro}"></span>
+        </div>
+    </div>
+
+    <div class="card" th:if="${endereco}">
+        <div class="card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+                <circle cx="12" cy="9" r="2.5"/>
+            </svg>
+            Endereço Encontrado
+        </div>
+
+        <div class="result-grid">
+            <div class="result-field">
+                <label>CEP</label>
+                <span th:text="${endereco.cep}">—</span>
+            </div>
+            <div class="result-field">
+                <label>Logradouro</label>
+                <span th:text="${endereco.logradouro != null and !#strings.isEmpty(endereco.logradouro) ? endereco.logradouro : '—'}"
+                      th:classappend="${#strings.isEmpty(endereco.logradouro)} ? 'empty' : ''">—</span>
+            </div>
+            <div class="result-field">
+                <label>Complemento</label>
+                <span th:text="${endereco.complemento != null and !#strings.isEmpty(endereco.complemento) ? endereco.complemento : 'Sem complemento'}"
+                      th:classappend="${#strings.isEmpty(endereco.complemento)} ? 'empty' : ''">—</span>
+            </div>
+            <div class="result-field">
+                <label>Bairro</label>
+                <span th:text="${endereco.bairro != null and !#strings.isEmpty(endereco.bairro) ? endereco.bairro : '—'}">—</span>
+            </div>
+            <div class="result-field">
+                <label>Cidade</label>
+                <span th:text="${endereco.localidade}">—</span>
+            </div>
+            <div class="result-field">
+                <label>UF</label>
+                <span th:text="${endereco.uf}">—</span>
+            </div>
+            <div class="result-field">
+                <label>DDD</label>
+                <span th:text="${endereco.ddd}">—</span>
+            </div>
+            <div class="result-field">
+                <label>IBGE</label>
+                <span th:text="${endereco.ibge}">—</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            </svg>
+            Histórico — CEPs Salvos no H2
+        </div>
+
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>CEP</th>
+                        <th>Logradouro</th>
+                        <th>Complemento</th>
+                        <th>Bairro</th>
+                        <th>Cidade</th>
+                        <th>UF</th>
+                        <th>IBGE</th>
+                        <th>DDD</th>
+                        <th>Consultado em</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:if="${#lists.isEmpty(historico)}">
+                        <td colspan="10" class="empty-table">
+                            Nenhum CEP consultado ainda. Faça sua primeira busca acima!
+                        </td>
+                    </tr>
+                    <tr th:each="e, stat : ${historico}">
+                        <td th:text="${stat.index + 1}">1</td>
+                        <td><strong th:text="${e.cep}">—</strong></td>
+                        <td th:text="${e.logradouro}">—</td>
+                        <td th:text="${e.complemento != null and !#strings.isEmpty(e.complemento) ? e.complemento : '—'}">—</td>
+                        <td th:text="${e.bairro}">—</td>
+                        <td th:text="${e.localidade}">—</td>
+                        <td><span class="badge-uf" th:text="${e.uf}">—</span></td>
+                        <td th:text="${e.ibge}">—</td>
+                        <td th:text="${e.ddd}">—</td>
+                        <td th:text="${#temporals.format(e.consultadoEm, 'dd/MM/yyyy HH:mm:ss')}">—</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</main>
+
+<script>
+    const input = document.getElementById('cepInput');
+    input.addEventListener('input', function () {
+        let v = this.value.replace(/\D/g, '').slice(0, 8);
+        if (v.length > 5) v = v.slice(0, 5) + '-' + v.slice(5);
+        this.value = v;
+    });
+</script>
+
+</body>
+</html>
